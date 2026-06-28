@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metro: Open World</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Segoe UI',sans-serif;user-select:none}
+#canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+#loading{position:fixed;inset:0;background:linear-gradient(135deg,#050510 0%,#0a0a1e 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000}
+#loading h1{font-size:3.5em;font-weight:900;letter-spacing:.15em;text-transform:uppercase;
+  background:linear-gradient(90deg,#00d4ff,#7b2fff,#ff6b35);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.3em}
+#loading p{color:rgba(255,255,255,.4);font-size:.9em;letter-spacing:.3em;margin-bottom:2em}
+#bar-wrap{width:420px;height:3px;background:rgba(255,255,255,.08);border-radius:2px}
+#bar{height:100%;width:0;background:linear-gradient(90deg,#00d4ff,#7b2fff);
+  border-radius:2px;transition:width .25s ease}
+#load-txt{color:rgba(255,255,255,.35);font-size:.75em;margin-top:1.2em;letter-spacing:.1em}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#fps{position:absolute;top:14px;right:14px;background:rgba(0,0,0,.55);
+  color:#0f0;padding:7px 13px;border-radius:5px;font-family:monospace;font-size:13px;
+  backdrop-filter:blur(6px);border:1px solid rgba(0,255,0,.15)}
+#cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px}
+#cross::before,#cross::after{content:'';position:absolute;background:rgba(255,255,255,.9)}
+#cross::before{width:14px;height:1.5px;top:50%;left:50%;transform:translate(-50%,-50%)}
+#cross::after{width:1.5px;height:14px;top:50%;left:50%;transform:translate(-50%,-50%)}
+#vhud{position:absolute;bottom:28px;right:28px;background:rgba(0,0,0,.65);color:#fff;
+  padding:18px 22px;border-radius:10px;backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.12);display:none;min-width:150px}
+#vhud .lbl{font-size:.7em;color:rgba(255,255,255,.45);letter-spacing:.15em}
+#spd{font-size:3em;font-weight:800;color:#00d4ff;line-height:1}
+#vhud .unit{font-size:.75em;color:rgba(255,255,255,.4);margin-top:2px}
+#gear{font-size:.85em;color:#7b2fff;margin-top:6px}
+#ctrl{position:absolute;bottom:28px;left:28px;background:rgba(0,0,0,.65);
+  color:rgba(255,255,255,.8);padding:16px 18px;border-radius:10px;backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.12);font-size:12px;line-height:2}
+#ctrl .k{display:inline-block;background:rgba(255,255,255,.18);padding:1px 7px;
+  border-radius:4px;margin-right:5px;font-family:monospace;font-size:11px;font-weight:700}
+#minimap{position:absolute;top:14px;left:14px;width:170px;height:170px;
+  border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.2);
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}
+#mmcanvas{width:170px;height:170px}
+#weather{position:absolute;top:58px;right:14px;background:rgba(0,0,0,.5);
+  color:rgba(255,255,255,.6);padding:5px 10px;border-radius:4px;font-size:12px}
+#prompt{position:absolute;top:62%;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.75);color:#fff;padding:10px 22px;border-radius:8px;
+  font-size:13px;display:none;backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.2);letter-spacing:.05em}
+#time-display{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.5);color:rgba(255,255,255,.7);padding:5px 14px;
+  border-radius:4px;font-size:13px;font-family:monospace;letter-spacing:.1em}
+#debug{position:absolute;top:100px;right:14px;background:rgba(0,0,0,.5);
+  color:rgba(255,255,255,.5);padding:8px 12px;border-radius:4px;font-size:11px;
+  font-family:monospace;line-height:1.8;display:none}
+</style>
+</head>
+<body>
+<div id="loading">
+  <h1>Metro</h1>
+  <p>OPEN WORLD</p>
+  <div id="bar-wrap"><div id="bar"></div></div>
+  <div id="load-txt">Initializing engine…</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="hud">
+  <div id="fps">FPS: --</div>
+  <div id="weather">☀ Clear</div>
+  <div id="time-display">12:00</div>
+  <div id="cross"></div>
+  <div id="minimap"><canvas id="mmcanvas" width="170" height="170"></canvas></div>
+  <div id="vhud">
+    <div class="lbl">SPEED</div>
+    <div id="spd">0</div>
+    <div class="unit">km/h</div>
+    <div id="gear">D</div>
+  </div>
+  <div id="ctrl">
+    <div><span class="k">WASD</span> Move</div>
+    <div><span class="k">Space</span> Jump</div>
+    <div><span class="k">Shift</span> Sprint</div>
+    <div><span class="k">F</span> Enter / Exit vehicle</div>
+    <div><span class="k">Mouse</span> Look</div>
+  </div>
+  <div id="prompt"></div>
+  <div id="debug"></div>
+</div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
